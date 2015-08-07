@@ -1,10 +1,12 @@
 widgets
 =======
 
-[![Build Status](https://magnum.travis-ci.com/Salesfloor/widgets.svg?token=eKsV996yzpvPdygcHk87&branch=dev)](https://magnum.travis-ci.com/Salesfloor/widgets)
-[![Code Climate](https://codeclimate.com/repos/54872a9c69568051d604d94f/badges/0eb3101dcc28ec6f4bb9/gpa.svg)](https://codeclimate.com/repos/54872a9c69568051d604d94f/feed)
-[![Test Coverage](https://codeclimate.com/repos/54872a9c69568051d604d94f/badges/0eb3101dcc28ec6f4bb9/coverage.svg)](https://codeclimate.com/repos/54872a9c69568051d604d94f/feed)
+[![Build Status](https://magnum.travis-ci.com/Salesfloor/widgets.svg?token=eKsV996yzpvPdygcHk87&branch=dev)](https://magnum.travis-ci.com/Salesfloor/widgets)[![Code Climate](https://codeclimate.com/repos/54872a9c69568051d604d94f/badges/0eb3101dcc28ec6f4bb9/gpa.svg)](https://codeclimate.com/repos/54872a9c69568051d604d94f/feed)[![Test Coverage](https://codeclimate.com/repos/54872a9c69568051d604d94f/badges/0eb3101dcc28ec6f4bb9/coverage.svg)](https://codeclimate.com/repos/54872a9c69568051d604d94f/feed)
 
+
+## Documentation
+####  [Retailer Integration](http://salesfloor.github.io/widgets/)
+####  Tests utilities - grunt jsdoc:tests (will be in tests/docs/index.html)
 
 ## Getting started 
 
@@ -338,4 +340,117 @@ var data = JSON.stringify({
 	exdays:"session"
 });
 this.parent && this.parent.postMessage(data, this.origin);
+```
+
+## Tracking sales
+
+The widget can be configured to track sales, we currently do that by scrapping the page, so when onboarding a new client will have to configure the scrapper. Be careful! Sometimes retailers have multiple confirmation pages. This is done by adding a tracking configuration object in **fe/config/[retailer]/tracking.[retailer].js**. Array name convention is: **sf_widget_configs.sw.tracking**
+
+Following this  convention, once the file is included with the widget, the tracking config file will automatically be picked up. The tracking configuration is based on a series of objects that will dictate what and when we should track data.
+
+### Options
+
+#### pageRegex (regex)
+
+PageRegex tells on what page we should track this data, this is a regex applied on window.location.
+
+
+#### loadChecker (Function)
+
+Function return true or false, used in combination of pageRegex to further qualify the page.
+
+#### trackEventsFlag (boolean)
+
+If enabled, the tracker will only track that event once in a page load.
+
+#### trackEvents (Function)
+Function where you can define events to track elements happening the the page life cycle. Executed on page load.
+
+
+#### type (customer | transaction | transaction-item)
+
+Type of data tracked, will change the img url tracking pixel corresponding to a controller in the back-end.
+
+
+#### data (elements | map)
+
+Data to track can be used 2 ways, a static object element, or a map that will loop over. The map is generally used to track a list of items in a transaction.
+
+
+### Example 
+```javascript
+    sf_widget_configs.sw.tracking  =[
+      {
+        'pageRegex':/\/checkout/,
+        'loadChecker' : function(){
+            if(sf_widget.utils.cookies.get('sf_wdt_tracking') === "true" && document.getElementById("CT_Main_0_txtBillingFirstName")){
+              return true;
+            }else{
+              return false;
+            }
+        },
+        // only enable tracking once
+        trackEventsFlag:true,
+        // when loading the tracking it will execute this function
+        trackEvents : function(tracker, trackItem){
+          // With SW te only way to track customer info is to listen to changes in the checkout form
+          document.getElementById("CT_Main_0_txtBillingFirstName").addEventListener("change", function(){
+            tracker.pushEvent(trackItem);
+          });
+        },
+        // Used to map data to api controller
+        type:"customer",
+        'data' : {
+            elements : {
+              customer_name : function(){
+                return document.querySelector("#CT_Main_0_txtBillingFirstName").value + " " + document.querySelector("#CT_Main_0_txtBillingLastName").value;
+              },
+              customer_email : function(){
+                return document.querySelector("#CT_Main_0_txtEmail").value;
+              }
+            }
+        }
+      },
+      {
+        'pageRegex':/\/checkout\/confirm/,
+        // Look if we should gather data on this specidic entry
+        'loadChecker' : function(){
+            return sf_widget.utils.cookies.get('sf_wdt_tracking') === "true" ? true : false;
+        },
+        // Used to map data to api controller
+        type:"transaction",
+        'data' : {
+            elements : {
+              trx_id : ".XpadS15 > .floatLeft > .formRow + .formRow .colWrap .floatLeft + .floatLeft",
+              customer_id : function(){ 
+                return sf_widget.utils.cookies.get('sf_wdt_customer_id') || "" ; 
+              }
+            }
+        }
+      },
+      {
+          'pageRegex':/\/checkout\/confirm/,
+          // Look if we should gather data on this specidic entry
+          'loadChecker' : function(){
+              return sf_widget.utils.cookies.get('sf_wdt_tracking') === "true" ? true : false;
+          },
+          // Used to map data to api controller
+          type:"transaction-item",
+          'data' : {
+            map : {
+              on: ".cart tr",
+              item : "td",  
+              itemLength : 9,           
+              data : {
+                trx_detail_total : ".Total p",
+                product_id : function(row){
+                  var brand = sf_widget.utils.trim(row.querySelector('.item .name').innerText);
+                  var color = row.querySelector('.color').innerHTML;
+                  return "MD5("+brand.toUpperCase()+" - "+color.toUpperCase()+")";
+                }
+              }
+            }
+          }
+        }
+    ];
 ```
