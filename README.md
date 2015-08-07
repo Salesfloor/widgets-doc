@@ -350,29 +350,29 @@ Following this  convention, once the file is included with the widget, the track
 
 ### Options
 
-#### pageRegex (regex)
+### pageRegex (regex)
 
 PageRegex tells on what page we should track this data, this is a regex applied on window.location.
 
 
-#### loadChecker (Function)
+### loadChecker (Function)
 
 Function return true or false, used in combination of pageRegex to further qualify the page.
 
-#### trackEventsFlag (boolean)
+### trackEventsFlag (boolean)
 
 If enabled, the tracker will only track that event once in a page load.
 
-#### trackEvents (Function)
+### trackEvents (Function)
 Function where you can define events to track elements happening the the page life cycle. Executed on page load.
 
 
-#### type (customer | transaction | transaction-item)
+### type (customer | transaction | transaction-item)
 
 Type of data tracked, will change the img url tracking pixel corresponding to a controller in the back-end.
 
 
-#### data (elements | map)
+### data (elements | map)
 
 Data to track can be used 2 ways, a static object element, or a map that will loop over. The map is generally used to track a list of items in a transaction.
 
